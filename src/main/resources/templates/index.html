@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+		<title>JCryption for Java</title>
+		<style type="text/css">
+			html,body {
+				font-family:Tahoma;
+				font-size:12px;
+			}
+			input,textarea,select {
+				font-family:Tahoma;
+				font-size:12px;
+			}
+		</style>
+		<script type="text/javascript" src="../js/jquery-1.7.1.js"></script>
+		<script type="text/javascript" src="../js/jquery.jcryption.js"></script>
+		<script type="text/javascript">
+			var $loader = $('<img src="loading.gif" alt="Loading..." title="Loading..." style="margin-right:15px;" />');
+			$(document).ready(function() {
+				debugger;
+				var hashObj = new jsSHA("mySuperPassword", "ASCII");
+				var password = hashObj.getHash("SHA-512", "HEX");
+			 
+				$.jCryption.authenticate(password, "encrypt?generateKeyPair=true", "encrypt?handshake=true",
+						function(AESKey) {
+							$("#text,#encrypt,#decrypt,#serverChallenge").attr("disabled",false);
+							$("#status").html('<span style="font-size: 16px;">Let\'s Rock!</span>');
+						},
+						function() {
+							// Authentication failed
+						}
+				);
+			 
+				$("#encrypt").click(function() {
+					var encryptedString = $.jCryption.encrypt($("#text").val(), password);
+					$("#log").prepend("\n").prepend("----------");
+					$("#log").prepend("\n").prepend("String: " + $("#text").val());
+					$("#log").prepend("\n").prepend("Encrypted: " + encryptedString);
+					$.ajax({
+						url: "encrypt?decryptData=true",
+						dataType: "json",
+						type: "POST",
+						data: {
+							jCryption: encryptedString
+						},
+						success: function(response) {
+							$("#log").prepend("\n").prepend("Server decrypted: " + response.data);
+						}
+					});
+				});
+			 
+				$("#serverChallenge").click(function() {
+					$.ajax({
+						url: "encrypt?decryptTest=true",
+						dataType: "json",
+						type: "POST",
+						success: function(response) {
+							$("#log").prepend("\n").prepend("----------");
+							$("#log").prepend("\n").prepend("Server original: " + response.unencrypted);
+							$("#log").prepend("\n").prepend("Server sent: " + response.encrypted);
+							var decryptedString = $.jCryption.decrypt(response.encrypted, password);
+							$("#log").prepend("\n").prepend("Decrypted: " + decryptedString);
+						}
+					});
+				});
+			 
+				$("#decrypt").click(function() {
+					var decryptedString = $.jCryption.decrypt($("#text").val(), password);
+					$("#log").prepend("\n").prepend("----------");
+					$("#log").prepend("\n").prepend("Decrypted: " + decryptedString);
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<p id="status">
+			<span style="font-size: 16px;">Encrypting channel ...</span>
+			<img src="img/loading.gif" alt="Loading..." title="Loading..." style="margin-right:15px;" />
+		</p>
+		String:
+		<input type="text" id="text" disabled="disabled" />
+		<button id="encrypt" disabled="disabled">encrypt</button>
+		<button id="decrypt" disabled="disabled">decrypt</button>
+		<button id="serverChallenge" disabled="disabled">get encrypted time from server</button><br/>
+		Log:<br/>
+		<textarea cols="60" rows="25" id="log"></textarea>
+	</body>
+</html>
